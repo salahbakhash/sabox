@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Help Center | Chat</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <h1 class="mt-5">Sa-Box</h1>
+      <p class="lead"><b>it has two styles at the moment (fixed, static)</b></p>
+      <hr />
+
+      <h3 class="mt-5">Static chat integrated with gemini pro</h3>
+      <div id="mycustomchat"></div>
+      <div id="mycustomchat1"></div>
+      <hr />
+      <h3 class="mt-5 mb-5">Fixed style is on the right bottom corner</h3>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai",
+          "@sabox": "./sa-box.js",
+          "jquery": "http://code.jquery.com/jquery-1.11.3.min.js"
+        }
+      }
+    </script>
+    <!-- <script type="module" src="./sa-box.js"></script> -->
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>
