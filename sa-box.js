@@ -5,9 +5,13 @@ export class SaBox {
   constructor(element, options) {
     this.target = $(element);
     this.avatar = "https://placehold.co/60x60/333/white?text=sa";
+    this.eventsList = [];
 
     if (options.avatar) {
       this.avatar = options.avatar;
+    }
+    if (options.storeURL) {
+      this.storeURL = options.storeURL;
     }
 
     this.chat = {
@@ -20,10 +24,11 @@ export class SaBox {
 
     if (this.chat && this.chat.messages && this.chat.messages.length > 0) {
       this.chat.messages.forEach((msg) => {
+        console.log(msg);
         this.chatMessage(msg);
         history.push({
           role: msg.user == 1 ? "user" : "model",
-          parts: msg.msg,
+          parts: [{ text: msg.text }], // Add the message as a "parts" array
         });
       });
     }
@@ -40,25 +45,35 @@ export class SaBox {
     }
   }
 
-  async addMessage(msg) {
-    // uiانشاء الرسالة في ال
-    let el = this.chatMessage(msg);
+  async addMessage(message) {
+    this.fireEvent("message", message.user == 1 ? 1 : 2, message.text);
 
-    if (this.chat && this.chat.messages) {
+    // uiانشاء الرسالة في ال
+    let el = this.chatMessage(message);
+
+    if (this.chat) {
       // للرسالة htmlتعيين عنصر ال
-      msg.element = el;
+      message.element = el;
       // إدخال الرسالة في مصفوفة الرسائل للشات
-      this.chat.messages.push(msg);
+      this.chat?.messages?.push(message);
       // حفظ الرسالة في قاعدة البيانات
-      this.storeMessage(msg);
+      if (message.user == 1) {
+        this.fireEvent("message:sent", el, message.text);
+      } else {
+        this.fireEvent("message:received", el, message.text);
+      }
+      if (this.storeURL) {
+        this.storeMessage(message);
+      }
     }
 
-    if (msg.user == 1) {
+    if (message.user == 1 && this.geminiApiKey && this.gemini) {
       // كان المرسل هو المستخدم (أنا)
       // apiسيرسل الرسالة وينتظر الجواب من ال
+      // مع التأكد من وجود مفتاح لمراسلة الذكاء الصناعي
 
       // api modelارسال الرسالة للجيميناي بإستخدام ال
-      const result = await this.gemini.sendMessage(msg.msg);
+      const result = await this.gemini.sendMessage(message.text);
       // تلقي الجواب
       const response = await result.response;
       // استخراج نص الجواب
@@ -67,14 +82,26 @@ export class SaBox {
       // إضافة الرسالة الى مصفوفة الرسائل و الشات
       this.addMessage({
         user: 2,
-        msg: text,
+        text: text,
       });
     }
   }
 
-  chatMessage(msg) {
-    if (msg.user == 1) {
-      let messageEL = $("<div/>", {
+  chatMessage(message) {
+    // Function to decode HTML entities
+    const decodeEntities = (str) => {
+      const textArea = document.createElement("textarea");
+      textArea.innerHTML = str;
+      return textArea.value;
+    };
+
+    // Decode the message content
+    message.text = decodeEntities(message.text);
+
+    let messageEL;
+
+    if (message.user == 1) {
+      messageEL = $("<div/>", {
         class: "my_msg_holder",
         css: {
           display: "flex",
@@ -85,7 +112,7 @@ export class SaBox {
 
       $("<div/>", {
         class: "chat_msg chat_msg_me",
-        text: msg.msg,
+        text: message.text,
       }).appendTo(messageEL);
 
       $("<span/>", {
@@ -94,60 +121,90 @@ export class SaBox {
           float: "none",
           marginBottom: "0",
         },
-        text: msg.status,
+        text: message.status ? message.status : "🔵",
       }).appendTo(messageEL);
-
       if (this.messageInput != null) {
         $(this.messageInput).val("");
       }
-
-      return messageEL;
-    } else {
-      let messageEl = $("<div/>", {
+    } else if (message.user == 2) {
+      messageEL = $("<div/>", {
         class: "chat_msg chat_msg_user",
         css: {
           float: "none",
-          marginBottom: "0",
         },
-        text: msg.msg,
+        text: message.text,
       }).appendTo(this.chatBody);
 
-      let avatar = $("<div/>", { class: "chat_avatar" }).appendTo(messageEl);
+      let avatar = $("<div/>", { class: "chat_avatar" }).appendTo(messageEL);
       $("<img/>", { src: this.avatar }).appendTo(avatar);
 
       if (this.chat.messages) {
         for (let i = this.chat.messages.length; i--; i > 0) {
           if (this.chat.messages[i].user == 1) {
             if (this.chat.messages[i].status == "🟡") {
+              // edit the status of the message object in chat array
               this.chat.messages[i].status = "🔵";
+              // edit the actual status element in the DOM
               $(this.chat.messages[i].element).find(".msg-status").text("🔵");
             } else {
-              break;
+              break; // when he find the bot's last message no need to continue
             }
           } else {
-            break;
+            break; // if the last message before this one is from the bot no need to continue
           }
         }
       }
-
-      return messageEl;
+    } else {
+      messageEL = $("<div/>", {
+        class: "chat_msg chat_msg_chat",
+        text: message.text,
+      }).appendTo(this.chatBody);
     }
+
+    this.chatBody.scrollTop(this.chatBody[0].scrollHeight);
+
+    return messageEL;
   }
 
-  storeMessage(msg) {
+  storeMessage(message) {
     var settings = {
-      url: `localhost/sabox/`,
+      url: this.storeURL,
       method: "POST",
-      data: { message: JSON.stringify(msg) },
+      data: { message: JSON.stringify(message) },
     };
 
-    $.ajax(settings).done((response) => {
-      let res = JSON.parse(response);
-      if (!res) {
-        console.error("this message did not stored:", res);
-        $(msg.element).find(".msg-status").text("🔴");
-      }
-    });
+    $.ajax(settings)
+      .done((response) => {
+        let res = JSON.parse(response);
+        if (!res) {
+          console.error("this message did not stored:", res);
+          $(message.element).find(".msg-status").text("🔴");
+        }
+      })
+      .catch((error) => {
+        console.error("this message did not stored:", error);
+        $(message.element).find(".msg-status").text("🔴");
+      });
+  }
+
+  send({ user, text, status = "🔵" } = message) {
+    this.addMessage({ user, text, status });
+    console.log(user);
+    console.log(text);
+  }
+
+  on(event, callback) {
+    this.eventsList.push({ event, callback });
+  }
+
+  fireEvent(event, ...params) {
+    if (this.eventsList.length) {
+      this.eventsList.forEach((ev) => {
+        if (ev.event == event) {
+          ev.callback(...params);
+        }
+      });
+    }
   }
 }
 
@@ -155,7 +212,6 @@ function saBoxStructureCreation(instance, options) {
   let settings = $.extend(
     {
       position: 1, // 1 => fixed, 2 => static
-      type: "chating", // chating, options, info
       header: {
         title: "Username Or Title",
         subtitle: "Customer",
@@ -224,19 +280,13 @@ function saBoxStructureCreation(instance, options) {
     text: settings.header.status,
   }).appendTo(headerOptions);
 
-  if (settings.type == "options") {
-    // other tabs or body slides
-  } else if (settings.type == "info") {
-    // other tabs or body slides
-  } else {
-    let chatBody = $("<div/>", {
-      class:
-        settings.position == 1
-          ? "chat_box chat_body"
-          : "chat_box chat_body d-block",
-    }).appendTo(MainBody);
-    instance.chatBody = chatBody;
-  }
+  let chatBody = $("<div/>", {
+    class:
+      settings.position == 1
+        ? "chat_box chat_body"
+        : "chat_box chat_body d-block",
+  }).appendTo(MainBody);
+  instance.chatBody = chatBody;
 
   let footer = $("<div/>", {
     class: "sabox_field",
@@ -299,7 +349,7 @@ function saBoxStructureCreation(instance, options) {
     let newMsg = $(instance.messageInput).val();
 
     if (newMsg && newMsg != "") {
-      instance.addMessage({ user: 1, msg: newMsg, status: "🟡" });
+      instance.addMessage({ user: 1, text: newMsg, status: "🟡" });
     }
   });
 }
