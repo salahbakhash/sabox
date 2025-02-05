@@ -170,7 +170,9 @@ export class SaBox {
     var settings = {
       url: this.storeURL,
       method: "POST",
-      data: { message: JSON.stringify(message) },
+      data: {
+        message: JSON.stringify({ user: message.user, text: message.text }),
+      },
     };
 
     $.ajax(settings)
@@ -181,7 +183,7 @@ export class SaBox {
           $(message.element).find(".msg-status").text("🔴");
         }
       })
-      .catch((error) => {
+      .fail(function (xhr, status, error) {
         console.error("this message did not stored:", error);
         $(message.element).find(".msg-status").text("🔴");
       });
