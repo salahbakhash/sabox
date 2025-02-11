@@ -13,6 +13,9 @@ export class SaBox {
     if (options.storeURL) {
       this.storeURL = options.storeURL;
     }
+    if (options.geminiEndPoint) {
+      this.geminiEndPoint = options.geminiEndPoint;
+    }
 
     this.chat = {
       messages: options.messages ?? [],
@@ -30,17 +33,6 @@ export class SaBox {
           role: msg.user == 1 ? "user" : "model",
           parts: [{ text: msg.text }], // Add the message as a "parts" array
         });
-      });
-    }
-
-    if (options.geminiApiKey) {
-      this.geminiApiKey = options.geminiApiKey;
-      // gemini stuff
-      const genAI = new GoogleGenerativeAI(this.geminiApiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-      this.gemini = model.startChat({
-        history: history,
       });
     }
   }
@@ -67,23 +59,25 @@ export class SaBox {
       }
     }
 
-    if (message.user == 1 && this.geminiApiKey && this.gemini) {
+    if (message.user == 1 && this.geminiEndPoint) {
       // كان المرسل هو المستخدم (أنا)
       // apiسيرسل الرسالة وينتظر الجواب من ال
-      // مع التأكد من وجود مفتاح لمراسلة الذكاء الصناعي
 
-      // api modelارسال الرسالة للجيميناي بإستخدام ال
-      const result = await this.gemini.sendMessage(message.text);
-      // تلقي الجواب
-      const response = await result.response;
-      // استخراج نص الجواب
-      const text = response.text();
-
-      // إضافة الرسالة الى مصفوفة الرسائل و الشات
-      this.addMessage({
-        user: 2,
-        text: text,
-      });
+      // End Pointارسال الرسالة للجيميناي بإستخدام ال
+      const response = $.ajax({
+        url: this.geminiEndPoint,
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ message: message.text }),
+      })
+        // تلقي الجواب
+        .then((response) => {
+          // إضافة الرسالة الى مصفوفة الرسائل و الشات
+          this.addMessage({
+            user: 2,
+            text: response.text,
+          });
+        });
     }
   }
 

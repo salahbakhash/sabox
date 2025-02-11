@@ -1,15 +1,15 @@
 import { SaBox } from "@sabox";
 
 $.ajax({
-  url: `http://localhost/sabox/store`,
+  url: window.location.href + `/store`,
   method: "GET",
 }).done((response) => {
   let res = JSON.parse(response);
 
   let chat1 = new SaBox("#mycustomchat1", {
-    // storeURL: "http://localhost/sabox/store", // store messages end-point
+    // storeURL: window.location.href + "/store", // store messages end-point
     position: 2, // 1 => fixed | 2 => static
-    // geminiApiKey: geminiApiKey,
+    geminiEndPoint: window.location.href + "/gemini",
     messages: res || [],
   });
 

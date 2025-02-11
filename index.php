@@ -6,6 +6,8 @@ if (isset($_GET["url"]) && !empty($_GET["url"])) {
 }
 if (isset($URL[0]) && $URL[0] == "store") {
   require_once "./store.php";
+} elseif (isset($URL[0]) && $URL[0] == "gemini") {
+  require_once "./gemini.php";
 } else {
 
   $messages = [];

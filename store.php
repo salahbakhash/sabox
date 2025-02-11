@@ -11,7 +11,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $message = json_decode($_POST["message"]);
     $message = [
       ":user" => filter_var($message->user, FILTER_SANITIZE_NUMBER_INT),
-      ":text" => filter_var($message->msg, FILTER_SANITIZE_SPECIAL_CHARS)
+      ":text" => filter_var($message->text, FILTER_SANITIZE_SPECIAL_CHARS)
     ];
 
     $stmt = $con->prepare("INSERT INTO messages (user_id, message) VALUES (:user, :text)");
